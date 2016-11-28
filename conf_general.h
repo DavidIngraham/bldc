@@ -85,7 +85,12 @@
 /*
  * Enable CAN-bus
  */
-#define CAN_ENABLE				1
+#define CAN_ENABLE				0
+
+/*
+ * Enable UAVCAN (Must not be enabled with regular VEXC CAN)
+ */
+ #define UAVCAN_ENABLE          1    
 
 /*
  * Settings for the external LEDs (hardcoded for now)

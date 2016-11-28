@@ -23,6 +23,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "mc_interface.h"
 #include "mcpwm.h"
@@ -36,13 +37,15 @@
 #include "packet.h"
 #include "commands.h"
 #include "timeout.h"
-#include "comm_can.h"
+//#include "comm_can.h"
+#include "comm_uavcan.h"
 #include "ws2811.h"
 #include "led_external.h"
 #include "encoder.h"
 #include "servo.h"
 #include "servo_simple.h"
 #include "utils.h"
+
 
 /*
  * Timers used:
@@ -182,6 +185,11 @@ int main(void) {
 #if CAN_ENABLE
 	comm_can_init();
 #endif
+
+#if UAVCAN_ENABLE
+	comm_uavcan_init();
+#endif
+
 
 #if WS2811_ENABLE
 	ws2811_init();

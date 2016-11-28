@@ -5,19 +5,19 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 -std=gnu99
+  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 
   USE_OPT += -DBOARD_OTG_NOVBUSSENS $(build_args)
   USE_OPT += -fsingle-precision-constant -Wdouble-promotion
 endif
 
 # C specific options here (added to USE_OPT).
 ifeq ($(USE_COPT),)
-  USE_COPT = 
+  USE_COPT = -std=gnu99 
 endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -fno-rtti
+  USE_CPPOPT = -fno-rtti -std=c++11 
 endif
 
 # Enable this if you want the linker to remove unused code and data
@@ -143,7 +143,7 @@ CSRC = $(STARTUPSRC) \
        eeprom.c \
        commands.c \
        timeout.c \
-       comm_can.c \
+       comm_uavcan.c \
        ws2811.c \
        led_external.c \
        encoder.c \
@@ -152,11 +152,14 @@ CSRC = $(STARTUPSRC) \
        mcpwm_foc.c \
        $(HWSRC) \
        $(APPSRC) \
-       $(NRFSRC)
+       $(NRFSRC) 
+
+#CSRC += comm_can.c 
+
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC =
+CPPSRC = 
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
@@ -239,13 +242,13 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = 
 
 # Define ASM defines here
 UADEFS =
 
 # List all user directories here
-UINCDIR =
+UINCDIR =  
 
 # List the user directory to look for the libraries here
 ULIBDIR =
@@ -253,9 +256,50 @@ ULIBDIR =
 # List all user libraries here
 ULIBS = -lm
 
+
+#
+# UAVCAN library
+#
+
+UDEFS += -DUAVCAN_STM32_CHIBIOS=1       # Tell UAVCAN we're using CHIBIOS
+UDEFS += -DUAVCAN_STM32_TIMER_NUMBER=6  # Any suitable timer number
+UDEFS += -DUAVCAN_STM32_NUM_IFACES=1     # Number of CAN interfaces to use (1 - use only CAN1; 2 - both CAN1 and CAN2)
+UDEFS += -DUAVCAN_CPP_VERSION=UAVCAN_CPP11                
+
+# Add libuavcan core sources and includes
+include libuavcan/libuavcan/include.mk
+CPPSRC += $(LIBUAVCAN_SRC)
+UINCDIR += $(LIBUAVCAN_INC)
+
+# Add STM32 driver sources and includes
+include libuavcan/libuavcan_drivers/stm32/driver/include.mk
+CPPSRC += $(LIBUAVCAN_STM32_SRC)
+UINCDIR += $(LIBUAVCAN_STM32_INC)
+
+# Add Chibios C++ Wrappers (Needed here as UAVCAN requires CPP while VESC doesn't)
+include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
+CPPSRC += $(CHPPSRC)
+UINCDIR += $(CHCPPINC)
+
+# Invoke DSDL compiler and add its default output directory to the include search path
+$(info $(shell $(LIBUAVCAN_DSDLC) $(UAVCAN_DSDL_DIR)))
+UINCDIR += dsdlc_generated      # This is where the generated headers are stored by default
+
+# Zubax implementation of some std library functions necessary for uavcan
+ZUBAX_CHIBIOS_DIR = zubax_chibios
+CPPSRC += $(ZUBAX_CHIBIOS_DIR)/zubax_chibios/sys/libstdcpp.cpp                  \
+          $(ZUBAX_CHIBIOS_DIR)/zubax_chibios/sys/sys_console.cpp                \
+          $(ZUBAX_CHIBIOS_DIR)/zubax_chibios/sys/sys.cpp
+
+
+
+
 #
 # End of user defines
 ##############################################################################
+
+
+
 
 ifeq ($(USE_FWLIB),yes)
   include $(CHIBIOS)/ext/stdperiph_stm32f4/stm32lib.mk
@@ -263,6 +307,7 @@ ifeq ($(USE_FWLIB),yes)
   INCDIR += $(STM32INC)
   USE_OPT += -DUSE_STDPERIPH_DRIVER
 endif
+
 
 build/$(PROJECT).bin: build/$(PROJECT).elf 
 	$(BIN) build/$(PROJECT).elf build/$(PROJECT).bin
